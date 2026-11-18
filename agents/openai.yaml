@@ -1,0 +1,4 @@
+interface:
+  display_name: "科研报告 Word 排版"
+  short_description: "统一中文材料科研报告的模板样式、化学式、有效数字、单位空格和顺序引文"
+  default_prompt: "使用 $format-research-word 按科研报告工作流整理我上传的 Word，并核对引文与目录。"
