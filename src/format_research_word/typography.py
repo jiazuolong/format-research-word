@@ -117,11 +117,11 @@ def round_values(chars):
         chars[m.start() : m.end()] = replacement
 
 
-def typography(chars, structural=False):
+def typography(chars, structural=False, *, recognize_formulas=True):
     text = joined(chars)
     protect = exclusions(text)
     # Mark the original formula runs before changing the widths of decimal values.
-    for m in formulae(text):
+    for m in formulae(text) if recognize_formulas else ():
         a, b = m.span()
         if overlaps(a, b, protect):
             continue

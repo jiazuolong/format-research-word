@@ -20,7 +20,11 @@ def main(argv=None):
     fmt = commands.add_parser("format", help="将可编辑正文、题注及表格排版到新 DOCX")
     fmt.add_argument("input", type=Path)
     fmt.add_argument("output", type=Path)
-    fmt.add_argument(
+    modes = fmt.add_mutually_exclusive_group()
+    modes.add_argument(
+        "--layout-only", action="store_true", help="只调整每个表的自适应布局和上标字体"
+    )
+    modes.add_argument(
         "--renumber-citations",
         action="store_true",
         help="按事先复核的静态方括号引文重排文献",
@@ -28,7 +32,12 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         if args.command == "format":
-            stats = format_docx(args.input, args.output, args.renumber_citations)
+            stats = format_docx(
+                args.input,
+                args.output,
+                args.renumber_citations,
+                layout_only=args.layout_only,
+            )
             print(args.output, json.dumps(stats, ensure_ascii=False))
         else:
             report = run(args.input)

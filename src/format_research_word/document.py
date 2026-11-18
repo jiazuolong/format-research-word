@@ -12,6 +12,7 @@ from zipfile import ZipFile
 from lxml import etree as ET
 
 from . import audit
+from .layout import RPR_ORDER, ScriptStyles, normalize_story, set_font, story_names
 from .typography import Char, joined, round_values, typography
 
 W, M = audit.W, audit.M
@@ -32,21 +33,15 @@ def prop(parent, tag, first=False):
 
 def attrs(run, ch):
     props = prop(run, W + "rPr", first=True)
-    if ch.chemical:
-        font = prop(props, W + "rFonts", first=True)
-        for key in list(font.attrib):
-            if "theme" in key.lower():
-                del font.attrib[key]
-        for key in ("ascii", "eastAsia", "hAnsi", "cs"):
-            font.set(W + key, "Times New Roman")
+    if ch.chemical or ch.script == "superscript":
+        set_font(props)
     if ch.script:
         prop(props, W + "vertAlign").set(W + "val", ch.script)
     if ch.upright:
         prop(props, W + "i").set(W + "val", "0")
         prop(props, W + "iCs").set(W + "val", "0")
     # Word expects run properties in schema order.
-    order = "rStyle rFonts b bCs i iCs caps smallCaps strike dstrike outline shadow emboss imprint noProof snapToGrid vanish webHidden color spacing w kern position sz szCs highlight u effect bdr shd fitText vertAlign rtl cs em lang eastAsianLayout specVanish oMath".split()
-    ranks = {W + tag: i for i, tag in enumerate(order)}
+    ranks = {W + tag: i for i, tag in enumerate(RPR_ORDER)}
     props[:] = sorted(props, key=lambda e: ranks.get(e.tag, len(ranks)))
 
 
@@ -306,7 +301,9 @@ def format_math(root):
     return changed
 
 
-def format_docx(source, destination, renumber_citations=False):
+def format_docx(source, destination, renumber_citations=False, *, layout_only=False):
+    if layout_only and renumber_citations:
+        raise ValueError("仅排表格和上标与重排引文应分开调用。")
     source, destination = Path(source), Path(destination)
     if source.suffix.lower() != ".docx" or destination.suffix.lower() != ".docx":
         raise ValueError("输入与输出都应使用 .docx 扩展名。")
@@ -319,32 +316,53 @@ def format_docx(source, destination, renumber_citations=False):
         body = root.find(W + "body")
         if body is None:
             raise ValueError("DOCX 中未识别到 Word 主正文。")
-        _, bib = find_bibliography(body)
-        fields = field_runs(body)
-        if renumber_citations:
-            stats["重排引文处"] = renumber(body, bib, source, fields)
-        for p in body.iter(W + "p"):
-            if p in bib or any(a.tag in PROTECTED for a in p.iterancestors()):
-                continue
-            structural = bool(HEADING.match(audit.visible_text(p)))
-            for group in list(chunks(p, fields)):
-                orig = chars_of(group)
-                new = typography(list(orig), structural)
-                if new != orig:
-                    rewrite(group, new)
-                    stats["处理文本组"] += 1
-        stats["处理原生公式文本组"] = format_math(body)
-        payload = ET.tostring(
-            root, encoding="UTF-8", xml_declaration=True, standalone=True
+        styles = ScriptStyles(
+            ET.fromstring(archive.read("word/styles.xml"), parser)
+            if "word/styles.xml" in archive.namelist()
+            else None
         )
+        if not layout_only:
+            _, bib = find_bibliography(body)
+            fields = field_runs(body)
+            if renumber_citations:
+                stats["重排引文处"] = renumber(body, bib, source, fields)
+            for p in body.iter(W + "p"):
+                if p in bib or any(a.tag in PROTECTED for a in p.iterancestors()):
+                    continue
+                structural = bool(HEADING.match(audit.visible_text(p)))
+                for chunk in list(chunks(p, fields)):
+                    for raised, runs in groupby(chunk, key=styles.is_raised):
+                        group = list(runs)
+                        orig = chars_of(group)
+                        new = typography(
+                            list(orig), structural, recognize_formulas=not raised
+                        )
+                        if new != orig:
+                            rewrite(group, new)
+                            stats["处理文本组"] += 1
+            stats["处理原生公式文本组"] = format_math(body)
+        parts = {}
+        for partname in ("word/document.xml", *story_names(archive, parser)):
+            story = (
+                root
+                if partname == "word/document.xml"
+                else ET.fromstring(archive.read(partname), parser)
+            )
+            tables, supers = normalize_story(story, styles)
+            stats["自动调整的表格"] += tables
+            stats["处理上标文本组"] += supers
+            if partname == "word/document.xml" or tables or supers:
+                parts[partname] = ET.tostring(
+                    story, encoding="UTF-8", xml_declaration=True, standalone=True
+                )
         # Build the package before creating the destination. Concurrent runs cannot overwrite one another.
         with tempfile.TemporaryFile() as tmp:
             with ZipFile(tmp, "w") as output:
                 for item in archive.infolist():
                     output.writestr(
                         item,
-                        payload
-                        if item.filename == "word/document.xml"
+                        parts[item.filename]
+                        if item.filename in parts
                         else archive.read(item),
                     )
             tmp.seek(0)
