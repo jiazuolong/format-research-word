@@ -14,6 +14,9 @@ def main(argv=None):
         prog="format-research-word", description="中文科研 Word 报告排版工具"
     )
     commands = parser.add_subparsers(dest="command", required=True)
+    toc = commands.add_parser("toc", help="用桌面 Word 生成或更新三级目录并核对页码")
+    toc.add_argument("input", type=Path)
+    toc.add_argument("output", type=Path)
     audit = commands.add_parser("audit", help="查看文献映射与长小数候选")
     audit.add_argument("input", type=Path)
     audit.add_argument("--json", type=Path, help="导出完整结果到新的 JSON 文件")
@@ -31,7 +34,12 @@ def main(argv=None):
     )
     args = parser.parse_args(argv)
     try:
-        if args.command == "format":
+        if args.command == "toc":
+            from .toc import generate_toc
+
+            entries = generate_toc(args.input, args.output)
+            print(f"{args.output}，目录共 {entries} 条。")
+        elif args.command == "format":
             stats = format_docx(
                 args.input,
                 args.output,
