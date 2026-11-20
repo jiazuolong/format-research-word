@@ -10,6 +10,7 @@ CUSTOM_HEADINGS = ("一级标题xx", "二级标题xx", "三级标题xx")
 # WdBuiltinStyle: Heading 1..3 and TOC 1..3 have stable, language-independent IDs.
 WORD_HEADINGS = (-2, -3, -4)
 TOC_STYLES = (-20, -21, -22)
+TOC_LINK_COLOR = 0x867846  # Word's BGR encoding of RGB #467886.
 TITLE = re.compile(r"^目\s*录$")
 STATIC_ENTRY = re.compile(r".+(?:\t|[.．…·]{2,})\s*(?:\d+|[IVXLCDM]+)$", re.I)
 OTHER_TOC = re.compile(r"\\[caf](?:\s|$)", re.I)
@@ -65,23 +66,38 @@ def format_title(para):
     font = para.Range.Font
     font.NameAscii = font.NameOther = "Times New Roman"
     font.NameFarEast = "黑体"
-    font.Size = 16
+    font.Size = 16  # 三号
     font.Bold = font.Italic = False
+    font.Color = 0
+    font.Underline = 0
 
 
 def format_entries(doc):
-    for level, key in enumerate(TOC_STYLES):
+    for key in TOC_STYLES:
         style = doc.Styles(key)
         style.AutomaticallyUpdate = False
+        style.NoSpaceBetweenParagraphsOfSameStyle = False
         font = style.Font
-        font.NameAscii = font.NameOther = font.NameFarEast = "等线"
-        font.Size = 11
+        font.NameAscii = font.NameOther = "Times New Roman"
+        font.NameFarEast = "宋体"
+        font.Size = 12  # 小四
         font.Bold = font.Italic = False
+        font.Color = TOC_LINK_COLOR
+        font.Underline = 1  # wdUnderlineSingle
+        font.UnderlineColor = -16777216  # wdColorAutomatic
         pf = style.ParagraphFormat
-        pf.Alignment = 1 if level == 0 else 0
+        pf.Alignment = 0
+        pf.OutlineLevel = 10
+        pf.MirrorIndents = False
+        pf.LeftIndent = 24  # Point fallback for two 12 pt characters.
+        pf.RightIndent = pf.FirstLineIndent = 0
         pf.CharacterUnitFirstLineIndent = 0
-        pf.CharacterUnitLeftIndent = 2 * level
-        pf.SpaceBefore = 0
+        pf.CharacterUnitLeftIndent = 2
+        pf.CharacterUnitRightIndent = 0
+        pf.AutoAdjustRightIndent = True
+        pf.DisableLineHeightGrid = False
+        pf.SpaceBeforeAuto = pf.SpaceAfterAuto = False
+        pf.LineUnitBefore = 0
         pf.SpaceAfter = 8
         pf.LineSpacingRule = 5
         pf.LineSpacing = 13.9
