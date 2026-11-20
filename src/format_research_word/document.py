@@ -12,12 +12,12 @@ from zipfile import ZipFile
 from lxml import etree as ET
 
 from . import audit
+from .inline import PROTECTED, normalize_inline
 from .layout import RPR_ORDER, ScriptStyles, normalize_story, set_font, story_names
 from .typography import Char, joined, round_values, typography
 
 W, M = audit.W, audit.M
 XML_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
-PROTECTED = {W + n for n in ("del", "ins", "moveTo", "moveFrom", "fldSimple")}
 HEADING = re.compile(
     r"^(?:第[一二三四五六七八九十\d]+章|[图表][A-E]?\d+|\d+(?:\.\d+)+|附录[A-E])\s"
 )
@@ -182,7 +182,8 @@ def renumber(body, bib, source, fields):
                     values = sorted({mapping[k] for k in ids})
                     val = m[0][0] + ",".join(map(str, values)) + m[0][-1]
                     chars[m.start() : m.end()] = [
-                        Char(c, chars[m.start()].origin) for c in val
+                        Char(c, chars[m.start()].origin, script="superscript")
+                        for c in val
                     ]
                     seen += 1
                 if matches:
@@ -349,9 +350,18 @@ def format_docx(source, destination, renumber_citations=False, *, layout_only=Fa
                 else ET.fromstring(archive.read(partname), parser)
             )
             tables, supers = normalize_story(story, styles)
+            inline_changes = 0
+            if not layout_only:
+                inline_changes = normalize_inline(
+                    story,
+                    styles,
+                    field_runs(story),
+                    set(bib) if story is root else set(),
+                )
+                stats["关系符、破折号及引文排版文本组"] += inline_changes
             stats["自动调整的表格"] += tables
             stats["处理上标文本组"] += supers
-            if partname == "word/document.xml" or tables or supers:
+            if partname == "word/document.xml" or tables or supers or inline_changes:
                 parts[partname] = ET.tostring(
                     story, encoding="UTF-8", xml_declaration=True, standalone=True
                 )

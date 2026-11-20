@@ -118,7 +118,7 @@ class WordFiles(unittest.TestCase):
             root = ET.fromstring(out.read("word/document.xml"))
             body = root.find(W + "body")
             text = "".join(body.itertext())
-            self.assertIn("测量Pb1-xGexCdAs2时x=0.497，见[1,2]", text)
+            self.assertIn("测量Pb1-xGexCdAs2时x = 0.497，见 [1,2]", text)
             self.assertIn("1Gamma2Alpha3Beta4Delta", text)
             self.assertIn("300 K，1.00×10−5 eV", text)
             ns = {"w": W[1:-1], "m": M[1:-1]}
@@ -129,7 +129,7 @@ class WordFiles(unittest.TestCase):
                         namespaces=ns,
                     )
                 ),
-                "−5",
+                "[1,2][1][2,3]−5[3]",
             )
             subs = root.xpath(
                 '//w:r[w:rPr/w:vertAlign[@w:val="subscript"]]', namespaces=ns
