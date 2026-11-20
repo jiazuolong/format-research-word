@@ -10,7 +10,6 @@ CUSTOM_HEADINGS = ("一级标题xx", "二级标题xx", "三级标题xx")
 # WdBuiltinStyle: Heading 1..3 and TOC 1..3 have stable, language-independent IDs.
 WORD_HEADINGS = (-2, -3, -4)
 TOC_STYLES = (-20, -21, -22)
-TOC_LINK_COLOR = 0x867846  # Word's BGR encoding of RGB #467886.
 TITLE = re.compile(r"^目\s*录$")
 STATIC_ENTRY = re.compile(r".+(?:\t|[.．…·]{2,})\s*(?:\d+|[IVXLCDM]+)$", re.I)
 OTHER_TOC = re.compile(r"\\[caf](?:\s|$)", re.I)
@@ -82,9 +81,6 @@ def format_entries(doc):
         font.NameFarEast = "宋体"
         font.Size = 12  # 小四
         font.Bold = font.Italic = False
-        font.Color = TOC_LINK_COLOR
-        font.Underline = 1  # wdUnderlineSingle
-        font.UnderlineColor = -16777216  # wdColorAutomatic
         pf = style.ParagraphFormat
         pf.Alignment = 0
         pf.OutlineLevel = 10

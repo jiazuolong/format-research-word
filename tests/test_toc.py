@@ -24,8 +24,8 @@ class TemplateContents(unittest.TestCase):
             self.assertEqual(font.get(W + "eastAsia"), "宋体")
             self.assertEqual(font.get(W + "ascii"), "Times New Roman")
             self.assertEqual(style.find(f"{W}rPr/{W}sz").get(W + "val"), "24")
-            self.assertEqual(style.find(f"{W}rPr/{W}color").get(W + "val"), "467886")
-            self.assertEqual(style.find(f"{W}rPr/{W}u").get(W + "val"), "single")
+            self.assertIsNone(style.find(f"{W}rPr/{W}color"))
+            self.assertIsNone(style.find(f"{W}rPr/{W}u"))
             self.assertEqual(style.find(f"{W}pPr/{W}ind").get(W + "leftChars"), "200")
             self.assertEqual(style.find(f"{W}pPr/{W}jc").get(W + "val"), "left")
             self.assertEqual(style.find(f"{W}pPr/{W}spacing").get(W + "line"), "278")
@@ -91,8 +91,8 @@ class Contents(unittest.TestCase):
                     row = toc.Range.Paragraphs(index).Range
                     font = row.Characters(1).Font
                     self.assertEqual(
-                        (font.NameFarEast, font.NameAscii, font.Size, font.Underline),
-                        ("宋体", "Times New Roman", 12, 1),
+                        (font.NameFarEast, font.NameAscii, font.Size),
+                        ("宋体", "Times New Roman", 12),
                     )
                     pf = row.ParagraphFormat
                     self.assertEqual(
