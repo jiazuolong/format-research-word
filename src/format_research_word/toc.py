@@ -72,7 +72,8 @@ def format_title(para):
 
 
 def format_entries(doc):
-    for key in TOC_STYLES:
+    for level, key in enumerate(TOC_STYLES, start=1):
+        left_chars = 2 * (level - 1)
         style = doc.Styles(key)
         style.AutomaticallyUpdate = False
         style.NoSpaceBetweenParagraphsOfSameStyle = False
@@ -82,13 +83,13 @@ def format_entries(doc):
         font.Size = 12  # 小四
         font.Bold = font.Italic = False
         pf = style.ParagraphFormat
-        pf.Alignment = 0
+        pf.Alignment = 1 if level == 1 else 0  # Chapter entries are centered.
         pf.OutlineLevel = 10
         pf.MirrorIndents = False
-        pf.LeftIndent = 24  # Point fallback for two 12 pt characters.
+        pf.LeftIndent = left_chars * 12  # Point fallback for 12 pt characters.
         pf.RightIndent = pf.FirstLineIndent = 0
         pf.CharacterUnitFirstLineIndent = 0
-        pf.CharacterUnitLeftIndent = 2
+        pf.CharacterUnitLeftIndent = left_chars
         pf.CharacterUnitRightIndent = 0
         pf.AutoAdjustRightIndent = True
         pf.DisableLineHeightGrid = False

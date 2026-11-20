@@ -15,7 +15,7 @@ TEMPLATE = Path(__file__).resolve().parents[1] / "assets" / "report-styles.docx"
 
 
 class TemplateContents(unittest.TestCase):
-    def test_three_entry_styles_use_the_same_format(self):
+    def test_three_entry_styles_share_fonts_and_preserve_hierarchy(self):
         with ZipFile(TEMPLATE) as doc:
             styles = ET.fromstring(doc.read("word/styles.xml"))
         for level in (1, 2, 3):
@@ -26,8 +26,11 @@ class TemplateContents(unittest.TestCase):
             self.assertEqual(style.find(f"{W}rPr/{W}sz").get(W + "val"), "24")
             self.assertIsNone(style.find(f"{W}rPr/{W}color"))
             self.assertIsNone(style.find(f"{W}rPr/{W}u"))
-            self.assertEqual(style.find(f"{W}pPr/{W}ind").get(W + "leftChars"), "200")
-            self.assertEqual(style.find(f"{W}pPr/{W}jc").get(W + "val"), "left")
+            indent, alignment = (("0", "center"), ("200", "left"), ("400", "left"))[
+                level - 1
+            ]
+            self.assertEqual(style.find(f"{W}pPr/{W}ind").get(W + "leftChars"), indent)
+            self.assertEqual(style.find(f"{W}pPr/{W}jc").get(W + "val"), alignment)
             self.assertEqual(style.find(f"{W}pPr/{W}spacing").get(W + "line"), "278")
 
 
@@ -87,7 +90,9 @@ class Contents(unittest.TestCase):
                     ),
                     ("黑体", 16),
                 )
-                for index in (1, 2, 3):
+                for index, (alignment, indent) in enumerate(
+                    ((1, 0), (0, 2), (0, 4)), start=1
+                ):
                     row = toc.Range.Paragraphs(index).Range
                     font = row.Characters(1).Font
                     self.assertEqual(
@@ -102,7 +107,7 @@ class Contents(unittest.TestCase):
                             pf.CharacterUnitRightIndent,
                             pf.CharacterUnitFirstLineIndent,
                         ),
-                        (0, 2, 0, 0),
+                        (alignment, indent, 0, 0),
                     )
                     self.assertEqual(
                         (pf.SpaceAfter, pf.LineSpacingRule, pf.OutlineLevel), (8, 5, 10)
